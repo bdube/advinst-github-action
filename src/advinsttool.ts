@@ -10,6 +10,10 @@ export class AdvinstTool {
   private version: string;
   private license: string;
   private enableCom: boolean;
+  private floatingLicense: boolean;
+  private licenseHost: string;
+  private licensePort: number;
+  private timeoutSeconds: number;
 
   private static readonly advinstCustomUrlVar = 'advancedinstaller_url';
   private static readonly advinstDownloadUrlTemplate =
@@ -22,6 +26,8 @@ export class AdvinstTool {
     '%s\\bin\\x86\\advancedinstaller.com';
   private static readonly asdvinstMsbuildTagetPathTemplate =
     '%s\\ProgramFilesFolder\\MSBuild\\Caphyon\\Advanced Installer';
+  private static readonly advinstCheckLicenseServerCmdTemplate =
+    '%s /registerfloating %s:%d -testconnection';
 
   private static readonly advinstCacheToolName = 'advinst';
   private static readonly advinstCacheToolArch = 'x86';
@@ -30,11 +36,22 @@ export class AdvinstTool {
     'AdvancedInstallerMSBuildTargets';
   private static readonly advinstToolRootVar = 'AdvancedInstallerRoot';
 
-  constructor(version: string, license: string, enableCom: boolean) {
-    this.version = version;
+  constructor(
+    version: string,
+    license: string,
+    enableCom: boolean,
+    floatingLicense = false,
+    licenseHost = '',
+    licensePort = 0,
+    timeoutSeconds = 0
+  ) {
     this.version = version;
     this.license = license;
     this.enableCom = enableCom;
+    this.floatingLicense = floatingLicense;
+    this.licenseHost = licenseHost;
+    this.licensePort = licensePort;
+    this.timeoutSeconds = timeoutSeconds;
   }
 
   async getPath(): Promise<string> {
@@ -63,7 +80,11 @@ export class AdvinstTool {
         util.format('Expected to find %s, but it was not found.', toolPath)
       );
     }
-    await this.register(toolPath);
+    if (this.license) {
+      await this.register(toolPath);
+    } else if (this.floatingLicense) {
+      await this.registerFloating(toolPath);
+    }
     await this.registerCom(toolPath);
     this.exportVariables(toolRoot);
 
@@ -125,6 +146,37 @@ export class AdvinstTool {
         throw new Error(ret.stdout);
       }
     }
+  }
+
+  async registerFloating(toolPath: string): Promise<void> {
+    if (this.floatingLicense) {
+      core.info('Acquiring floating license');
+      const cmd = util.format(
+        AdvinstTool.advinstCheckLicenseServerCmdTemplate,
+        toolPath,
+        this.licenseHost,
+        this.licensePort
+      );
+      let ret = await exec.getExecOutput(cmd);
+      if (ret.exitCode !== 0) {
+        core.info(`Could not acquire license: ${ret.exitCode} ${ret}`);
+        //TODO: wait here and retry for up to timeoutSeconds
+        //temporary hack: this is supposed to be a retry loop but let's
+        //just schedule this to try again in timeoutSeconds hahaha
+        core.info(`Waiting ${this.timeoutSeconds} seconds before trying again`);
+        await this.sleep(this.timeoutSeconds);
+        ret = await exec.getExecOutput(cmd);
+        if (ret.exitCode !== 0) {
+          throw new Error(ret.stdout);
+        }
+      } else {
+        core.info('License slot is available, if we hurry now');
+      }
+    }
+  }
+
+  private async sleep(seconds: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, seconds * 1000));
   }
 
   async registerCom(toolPath: string): Promise<void> {

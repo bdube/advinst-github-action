@@ -17,6 +17,16 @@ async function run(): Promise<void> {
     core.debug(`Advinst license: ${license}`);
     const enable_com = core.getInput('advinst-enable-automation');
     core.debug(`Advinst enable com: ${enable_com}`);
+    const floating_license = core.getInput('advinst-use-floating-license');
+    core.debug(`Advinst use floating license: ${floating_license}`);
+    const license_host = core.getInput('advinst-license-host');
+    core.debug(`Advinst license host: ${license_host}`);
+    const license_port = Number(core.getInput('advinst-license-port'));
+    core.debug(`Advinst enable com: ${license_port}`);
+    const timeout_seconds = Number(
+      core.getInput('advinst-license-timeout-seconds')
+    );
+    core.debug(`Advinst license timeout seconds: ${timeout_seconds}`);
 
     const [isDeprecated, minAllowedVer] = await versionIsDeprecated(version);
     if (isDeprecated) {
@@ -25,11 +35,21 @@ async function run(): Promise<void> {
       );
     }
 
+    if (license && floating_license) {
+      core.warning(
+        'A license is configured and floating license is set to true. Configured license will be used.'
+      );
+    }
+
     core.startGroup('Advanced Installer Tool Deploy');
     const advinstTool = new AdvinstTool(
       version,
       license,
-      enable_com === 'true'
+      enable_com === 'true',
+      floating_license === 'true',
+      license_host,
+      license_port,
+      timeout_seconds
     );
     const toolPath = await advinstTool.getPath();
     core.endGroup();

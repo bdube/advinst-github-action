@@ -230,11 +230,14 @@ const path_1 = __nccwpck_require__(1017);
 const utils_1 = __nccwpck_require__(918);
 const util_1 = __importDefault(__nccwpck_require__(3837));
 class AdvinstTool {
-    constructor(version, license, enableCom) {
-        this.version = version;
+    constructor(version, license, enableCom, floatingLicense = false, licenseHost = '', licensePort = 0, timeoutSeconds = 0) {
         this.version = version;
         this.license = license;
         this.enableCom = enableCom;
+        this.floatingLicense = floatingLicense;
+        this.licenseHost = licenseHost;
+        this.licensePort = licensePort;
+        this.timeoutSeconds = timeoutSeconds;
     }
     getPath() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -256,7 +259,12 @@ class AdvinstTool {
             if (!ret) {
                 throw new Error(util_1.default.format('Expected to find %s, but it was not found.', toolPath));
             }
-            yield this.register(toolPath);
+            if (this.license) {
+                yield this.register(toolPath);
+            }
+            else if (this.floatingLicense) {
+                yield this.registerFloating(toolPath);
+            }
             yield this.registerCom(toolPath);
             this.exportVariables(toolRoot);
             //Add to PATH
@@ -302,6 +310,35 @@ class AdvinstTool {
             }
         });
     }
+    registerFloating(toolPath) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.floatingLicense) {
+                core.info('Acquiring floating license');
+                const cmd = util_1.default.format(AdvinstTool.advinstCheckLicenseServerCmdTemplate, toolPath, this.licenseHost, this.licensePort);
+                let ret = yield exec.getExecOutput(cmd);
+                if (ret.exitCode !== 0) {
+                    core.info(`Could not acquire license: ${ret.exitCode} ${ret}`);
+                    //TODO: wait here and retry for up to timeoutSeconds
+                    //temporary hack: this is supposed to be a retry loop but let's
+                    //just schedule this to try again in timeoutSeconds hahaha
+                    core.info(`Waiting ${this.timeoutSeconds} seconds before trying again`);
+                    yield this.sleep(this.timeoutSeconds);
+                    ret = yield exec.getExecOutput(cmd);
+                    if (ret.exitCode !== 0) {
+                        throw new Error(ret.stdout);
+                    }
+                }
+                else {
+                    core.info('License slot is available, if we hurry now');
+                }
+            }
+        });
+    }
+    sleep(seconds) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise(resolve => setTimeout(resolve, seconds * 1000));
+        });
+    }
     registerCom(toolPath) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.enableCom) {
@@ -327,6 +364,7 @@ AdvinstTool.advinstRegisterCmdTemplate = '%s /RegisterCI %s';
 AdvinstTool.advinstStartComCmdTemplate = '%s /REGSERVER';
 AdvinstTool.advinstComPathTemplate = '%s\\bin\\x86\\advancedinstaller.com';
 AdvinstTool.asdvinstMsbuildTagetPathTemplate = '%s\\ProgramFilesFolder\\MSBuild\\Caphyon\\Advanced Installer';
+AdvinstTool.advinstCheckLicenseServerCmdTemplate = '%s /registerfloating %s:%d -testconnection';
 AdvinstTool.advinstCacheToolName = 'advinst';
 AdvinstTool.advinstCacheToolArch = 'x86';
 AdvinstTool.advinstMSBuildTargetsVar = 'AdvancedInstallerMSBuildTargets';
@@ -498,12 +536,23 @@ function run() {
             core.debug(`Advinst license: ${license}`);
             const enable_com = core.getInput('advinst-enable-automation');
             core.debug(`Advinst enable com: ${enable_com}`);
+            const floating_license = core.getInput('advinst-use-floating-license');
+            core.debug(`Advinst use floating license: ${floating_license}`);
+            const license_host = core.getInput('advinst-license-host');
+            core.debug(`Advinst license host: ${license_host}`);
+            const license_port = Number(core.getInput('advinst-license-port'));
+            core.debug(`Advinst enable com: ${license_port}`);
+            const timeout_seconds = Number(core.getInput('advinst-license-timeout-seconds'));
+            core.debug(`Advinst license timeout seconds: ${timeout_seconds}`);
             const [isDeprecated, minAllowedVer] = yield (0, advinstversions_1.versionIsDeprecated)(version);
             if (isDeprecated) {
                 core.warning(util_1.default.format(messages_1.ADVINST_VER_DEPRECATION_ERROR, minAllowedVer, version));
             }
+            if (license && floating_license) {
+                core.warning('A license is configured and floating license is set to true. Configured license will be used.');
+            }
             core.startGroup('Advanced Installer Tool Deploy');
-            const advinstTool = new advinsttool_1.AdvinstTool(version, license, enable_com === 'true');
+            const advinstTool = new advinsttool_1.AdvinstTool(version, license, enable_com === 'true', floating_license === 'true', license_host, license_port, timeout_seconds);
             const toolPath = yield advinstTool.getPath();
             core.endGroup();
             const aipPath = core.getInput('aip-path');
