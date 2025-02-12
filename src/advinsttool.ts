@@ -42,8 +42,8 @@ export class AdvinstTool {
     enableCom: boolean,
     floatingLicense = false,
     licenseHost = '',
-    licensePort = 0,
-    timeoutSeconds = 0
+    licensePort = 1024,
+    timeoutSeconds = 180
   ) {
     this.version = version;
     this.license = license;

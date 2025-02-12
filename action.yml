@@ -6,12 +6,28 @@ inputs:
     description: 'Advanced Installer version to deploy. This parameter is optional. If not specified the latest version will be used. For a list of valid versions please see http://www.advancedinstaller.com/version-history.html'
     required: false
   advinst-license:
-    description: 'Advanced Installer license ID. This parameter is optional if you are using a simple project type.'
+    description: 'Advanced Installer license ID. This parameter is optional if you are using a simple project type. Mutually exclusive with advinst-use-floating-license.'
     required: false
   advinst-enable-automation:
     description: 'Enable Advanced Installer PowerShell automation. This capability needs Advanced Installer 16.1 or higher.'
     required: false
     default: 'false'
+  advinst-use-floating-license:
+    description: 'Enable network license server. Mutually exclusive with advinst-license.'
+    required: false
+    default: 'false'
+  advinst-license-host:
+    description: 'Hostname of network license server.'
+    required: false
+    default: ''
+  advinst-license-port:
+    description: 'Port number of network license server.'
+    required: false
+    default: 1024
+  advinst-license-timeout-seconds:
+    description: 'Maximum time to retry acquiring floating license.'
+    required: false
+    default: 180
   aip-path:
     description: 'The Advanced Installer project (.AIP) to be built.'
     required: false

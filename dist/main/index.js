@@ -230,7 +230,7 @@ const path_1 = __nccwpck_require__(1017);
 const utils_1 = __nccwpck_require__(918);
 const util_1 = __importDefault(__nccwpck_require__(3837));
 class AdvinstTool {
-    constructor(version, license, enableCom, floatingLicense = false, licenseHost = '', licensePort = 0, timeoutSeconds = 0) {
+    constructor(version, license, enableCom, floatingLicense = false, licenseHost = '', licensePort = 0, timeoutSeconds = 180) {
         this.version = version;
         this.license = license;
         this.enableCom = enableCom;
@@ -540,9 +540,9 @@ function run() {
             core.debug(`Advinst use floating license: ${floating_license}`);
             const license_host = core.getInput('advinst-license-host');
             core.debug(`Advinst license host: ${license_host}`);
-            const license_port = Number(core.getInput('advinst-license-port'));
+            const license_port = Number(core.getInput('advinst-license-port')) || 1024;
             core.debug(`Advinst enable com: ${license_port}`);
-            const timeout_seconds = Number(core.getInput('advinst-license-timeout-seconds'));
+            const timeout_seconds = Number(core.getInput('advinst-license-timeout-seconds')) || 180;
             core.debug(`Advinst license timeout seconds: ${timeout_seconds}`);
             const [isDeprecated, minAllowedVer] = yield (0, advinstversions_1.versionIsDeprecated)(version);
             if (isDeprecated) {

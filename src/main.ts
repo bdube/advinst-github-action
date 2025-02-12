@@ -21,11 +21,10 @@ async function run(): Promise<void> {
     core.debug(`Advinst use floating license: ${floating_license}`);
     const license_host = core.getInput('advinst-license-host');
     core.debug(`Advinst license host: ${license_host}`);
-    const license_port = Number(core.getInput('advinst-license-port'));
+    const license_port = Number(core.getInput('advinst-license-port')) || 1024;
     core.debug(`Advinst enable com: ${license_port}`);
-    const timeout_seconds = Number(
-      core.getInput('advinst-license-timeout-seconds')
-    );
+    const timeout_seconds =
+      Number(core.getInput('advinst-license-timeout-seconds')) || 180;
     core.debug(`Advinst license timeout seconds: ${timeout_seconds}`);
 
     const [isDeprecated, minAllowedVer] = await versionIsDeprecated(version);
