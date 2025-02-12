@@ -230,7 +230,7 @@ const path_1 = __nccwpck_require__(1017);
 const utils_1 = __nccwpck_require__(918);
 const util_1 = __importDefault(__nccwpck_require__(3837));
 class AdvinstTool {
-    constructor(version, license, enableCom, floatingLicense = false, licenseHost = '', licensePort = 0, timeoutSeconds = 180) {
+    constructor(version, license, enableCom, floatingLicense = false, licenseHost = '', licensePort = 1024, timeoutSeconds = 180) {
         this.version = version;
         this.license = license;
         this.enableCom = enableCom;
@@ -315,7 +315,12 @@ class AdvinstTool {
             if (this.floatingLicense) {
                 core.info('Acquiring floating license');
                 const cmd = util_1.default.format(AdvinstTool.advinstCheckLicenseServerCmdTemplate, toolPath, this.licenseHost, this.licensePort);
-                let ret = yield exec.getExecOutput(cmd);
+                //We need exec to ignore the return code so that control is returned
+                //back to us rather than failing internally
+                const options = { ignoreReturnCode: false };
+                let ret = yield exec.getExecOutput(cmd, [], options);
+                //Exit code 0xE001006D (3_758_162_029) means no license slot is available
+                //or another error occurred
                 if (ret.exitCode !== 0) {
                     core.info(`Could not acquire license: ${ret.exitCode} ${ret}`);
                     //TODO: wait here and retry for up to timeoutSeconds
@@ -323,7 +328,7 @@ class AdvinstTool {
                     //just schedule this to try again in timeoutSeconds hahaha
                     core.info(`Waiting ${this.timeoutSeconds} seconds before trying again`);
                     yield this.sleep(this.timeoutSeconds);
-                    ret = yield exec.getExecOutput(cmd);
+                    ret = yield exec.getExecOutput(cmd, [], options);
                     if (ret.exitCode !== 0) {
                         throw new Error(ret.stdout);
                     }

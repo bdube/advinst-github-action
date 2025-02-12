@@ -157,7 +157,12 @@ export class AdvinstTool {
         this.licenseHost,
         this.licensePort
       );
-      let ret = await exec.getExecOutput(cmd);
+      //We need exec to ignore the return code so that control is returned
+      //back to us rather than failing internally
+      const options: exec.ExecOptions = {ignoreReturnCode: false};
+      let ret = await exec.getExecOutput(cmd, [], options);
+      //Exit code 0xE001006D (3_758_162_029) means no license slot is available
+      //or another error occurred
       if (ret.exitCode !== 0) {
         core.info(`Could not acquire license: ${ret.exitCode} ${ret}`);
         //TODO: wait here and retry for up to timeoutSeconds
@@ -165,7 +170,7 @@ export class AdvinstTool {
         //just schedule this to try again in timeoutSeconds hahaha
         core.info(`Waiting ${this.timeoutSeconds} seconds before trying again`);
         await this.sleep(this.timeoutSeconds);
-        ret = await exec.getExecOutput(cmd);
+        ret = await exec.getExecOutput(cmd, [], options);
         if (ret.exitCode !== 0) {
           throw new Error(ret.stdout);
         }
