@@ -347,7 +347,7 @@ class AdvinstTool {
                 licenseAcquired = ret.exitCode === 0;
             }
             const endTime = this.time_ms();
-            const durationSeconds = (endTime - startTime) * 1000;
+            const durationSeconds = (endTime - startTime) / 1000000;
             core.info(`Ending retry loop after ${durationSeconds} seconds`);
             if (licenseAcquired) {
                 core.info('License slot is available, if we hurry now');
