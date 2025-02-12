@@ -317,7 +317,7 @@ class AdvinstTool {
                 const cmd = util_1.default.format(AdvinstTool.advinstCheckLicenseServerCmdTemplate, toolPath, this.licenseHost, this.licensePort);
                 //We need exec to ignore the return code so that control is returned
                 //back to us rather than failing internally
-                const options = { ignoreReturnCode: false };
+                const options = { ignoreReturnCode: true };
                 let ret = yield exec.getExecOutput(cmd, [], options);
                 //Exit code 0xE001006D (3_758_162_029) means no license slot is available
                 //or another error occurred

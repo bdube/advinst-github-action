@@ -159,7 +159,7 @@ export class AdvinstTool {
       );
       //We need exec to ignore the return code so that control is returned
       //back to us rather than failing internally
-      const options: exec.ExecOptions = {ignoreReturnCode: false};
+      const options: exec.ExecOptions = {ignoreReturnCode: true};
       let ret = await exec.getExecOutput(cmd, [], options);
       //Exit code 0xE001006D (3_758_162_029) means no license slot is available
       //or another error occurred
