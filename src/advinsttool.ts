@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as toolCache from '@actions/tool-cache';
+import BigInt from 'big-integer';
 
 import {dirname, join} from 'path';
 import {exists, getRunnerTempDir, getVariable} from './utils';
@@ -148,39 +149,81 @@ export class AdvinstTool {
     }
   }
 
+  //TODO: clean this up and use more idiomatic node async design
   async registerFloating(toolPath: string): Promise<void> {
-    if (this.floatingLicense) {
-      core.info('Acquiring floating license');
-      const cmd = util.format(
-        AdvinstTool.advinstCheckLicenseServerCmdTemplate,
-        toolPath,
-        this.licenseHost,
-        this.licensePort
+    if (!this.floatingLicense) {
+      core.warning(
+        'registerFloating was called without setting floatingLicense'
       );
-      //We need exec to ignore the return code so that control is returned
-      //back to us rather than failing internally
-      const options: exec.ExecOptions = {ignoreReturnCode: true};
-      let ret = await exec.getExecOutput(cmd, [], options);
-      //Exit code 0xE001006D (3_758_162_029) means no license slot is available
-      //or another error occurred
-      if (ret.exitCode !== 0) {
-        core.info(`Could not acquire license: ${ret.exitCode} ${ret}`);
-        //TODO: wait here and retry for up to timeoutSeconds
-        //temporary hack: this is supposed to be a retry loop but let's
-        //just schedule this to try again in timeoutSeconds hahaha
-        core.info(`Waiting ${this.timeoutSeconds} seconds before trying again`);
-        await this.sleep(this.timeoutSeconds);
-        ret = await exec.getExecOutput(cmd, [], options);
-        if (ret.exitCode !== 0) {
-          throw new Error(ret.stdout);
-        }
+      return;
+    }
+
+    core.info('Acquiring floating license');
+    const cmd = util.format(
+      AdvinstTool.advinstCheckLicenseServerCmdTemplate,
+      toolPath,
+      this.licenseHost,
+      this.licensePort
+    );
+    //We need exec to ignore the return code so that control is returned
+    //back to us rather than failing internally
+    const options: exec.ExecOptions = {ignoreReturnCode: true};
+    //Exit code 0xE001006D (3_758_162_029) means no license slot is available
+    //or another error occurred
+    const licenseOrNetworkErrorCode = 0xe001006d;
+    let ret = await exec.getExecOutput(cmd, [], options);
+    let licenseAcquired = ret.exitCode === 0;
+    //Starting clock after first attempt
+    const startTime = this.time_ms();
+    const deadline = startTime + this.timeoutSeconds * 1000;
+    //TODO: make configurable?
+    const retryDelaySeconds = 15;
+    while (!licenseAcquired && this.time_ms() < deadline) {
+      core.info(`Could not acquire license: exit code ${ret.exitCode}`);
+      if (licenseOrNetworkErrorCode === ret.exitCode) {
+        core.info(
+          'A floating license slot is not available, or another error occurred'
+        );
       } else {
-        core.info('License slot is available, if we hurry now');
+        core.warning(
+          `Exit code is expected to be 0 or ${licenseOrNetworkErrorCode}. An unexpected exit code was returned: ${ret.exitCode}`
+        );
+      }
+      core.info(`Waiting ${retryDelaySeconds} seconds before trying again`);
+      await this.sleep_seconds(retryDelaySeconds);
+      ret = await exec.getExecOutput(cmd, [], options);
+      licenseAcquired = ret.exitCode === 0;
+    }
+    const endTime = this.time_ms();
+    const durationSeconds = (endTime - startTime) * 1000;
+    core.info(`Ending retry loop after ${durationSeconds} seconds`);
+    if (licenseAcquired) {
+      core.info('License slot is available, if we hurry now');
+      return;
+    } else {
+      core.info(`Could not acquire license: exit code ${ret.exitCode}`);
+      if (licenseOrNetworkErrorCode === ret.exitCode) {
+        core.info(
+          'A floating license slot was not available, or another error occurred'
+        );
+      } else {
+        core.warning(
+          `Exit code is expected to be 0 or ${licenseOrNetworkErrorCode}. An unexpected exit code was returned: ${ret.exitCode}`
+        );
       }
     }
   }
 
-  private async sleep(seconds: number): Promise<void> {
+  //Returns current time converted from nanoseconds to milliseconds
+  // https://stackoverflow.com/questions/46964779/monotonically-increasing-time-in-node-js#46964780
+  private time_ms(): number {
+    //In nodejs this works without the extra BigInt and valueOf, but we need
+    //the polyfill in the GitHub action environment
+    const nanos = BigInt(process.hrtime.bigint());
+    return Number(nanos.valueOf() / BigInt(1_000_000).valueOf());
+  }
+
+  private async sleep_seconds(seconds: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, seconds * 1000));
   }
 
