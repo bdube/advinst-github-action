@@ -17,11 +17,26 @@ async function run(): Promise<void> {
     core.debug(`Advinst license: ${license}`);
     const enable_com = core.getInput('advinst-enable-automation');
     core.debug(`Advinst enable com: ${enable_com}`);
+    const floating_license = core.getInput('advinst-use-floating-license');
+    core.debug(`Advinst use floating license: ${floating_license}`);
+    const license_host = core.getInput('advinst-license-host');
+    core.debug(`Advinst license host: ${license_host}`);
+    const license_port = Number(core.getInput('advinst-license-port')) || 1024;
+    core.debug(`Advinst enable com: ${license_port}`);
+    const timeout_seconds =
+      Number(core.getInput('advinst-license-timeout-seconds')) || 180;
+    core.debug(`Advinst license timeout seconds: ${timeout_seconds}`);
 
     const [isDeprecated, minAllowedVer] = await versionIsDeprecated(version);
     if (isDeprecated) {
-      throw new Error(
+      core.warning(
         util.format(ADVINST_VER_DEPRECATION_ERROR, minAllowedVer, version)
+      );
+    }
+
+    if (license && floating_license) {
+      core.warning(
+        'A license is configured and floating license is set to true. Configured license will be used.'
       );
     }
 
@@ -29,7 +44,11 @@ async function run(): Promise<void> {
     const advinstTool = new AdvinstTool(
       version,
       license,
-      enable_com === 'true'
+      enable_com === 'true',
+      floating_license === 'true',
+      license_host,
+      license_port,
+      timeout_seconds
     );
     const toolPath = await advinstTool.getPath();
     core.endGroup();
