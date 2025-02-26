@@ -10,7 +10,7 @@ This action will integrate [Advanced Installer Tool](https://www.advancedinstall
 See [action.yml](action.yml).
 
 ```yml
-uses: caphyon/advinst-github-action@main
+uses: bdube/advinst-github-action@main
 with:
   advinst-version: '<version>'
   advinst-license: '<license_id>'
