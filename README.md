@@ -19,6 +19,10 @@ with:
   aip-build-name: '<aip_project_build>'
   aip-package-name: '<output_package_name>'
   aip-output-dir: '<output_package_dir>'
+  advinst-use-floating-license: '<true|false>'
+  advinst-license-host: '<hostname_of_license_server>'
+  advinst-license-port: <port_number_of_license_server>
+  advinst-license-timeout-seconds: <timeout_in_seconds>
   aip-commands: |
     <command_1>
     <command_2>
@@ -39,11 +43,27 @@ You can specify a custom download location by using the ***advancedinstaller_url
 
 ### advinst-license
 
-Advanced Installer license ID. This parameter is optional if you are using a [simple](https://www.advancedinstaller.com/user-guide/tutorial-simple.html) project type.
+Advanced Installer license ID. This parameter is optional if you are using a [simple](https://www.advancedinstaller.com/user-guide/tutorial-simple.html) project type. Mutually exclusive with **advinst-use-floating-license**.
 
 ### advinst-enable-automation
 
 Enable Advanced Installer [PowerShell automation](https://www.advancedinstaller.com/user-guide/powershell-automation.html). This capability needs [Advanced Installer 16.1](https://www.advancedinstaller.com/release-16.1.html) or higher.
+
+### advinst-use-floating-license
+
+Enable network license server. Mutually exclusive with **advinst-license**.
+
+### advinst-license-host
+
+Hostname of network license server.
+
+### advinst-license-port
+
+Port number of network license server.
+
+### advinst-license-timeout-seconds
+
+Maximum time to retry acquiring floating license.
 
 ### aip-path
 
